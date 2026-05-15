@@ -5,8 +5,8 @@ RTS Game Live Debug Controller (Reference Implementation)
 This is a real-world example of extending LiveDebugController for a
 complex Phaser 3 RTS game (Neon Dominion).
 
-It was extremely effective during development for finding and fixing
-lobby, vision, camera, and AI bugs while watching the game run live.
+It demonstrates how to build high-level game-specific helpers on top
+of the generic controller, including the new tracing and video features.
 
 Usage:
     python -m examples.rts_game.rts_controller
@@ -23,16 +23,31 @@ from __future__ import annotations
 
 import code
 import time
+from pathlib import Path
 from typing import Any, Optional
 
 from controllers.live_debug_controller import LiveDebugController
 
 
 class RTSLiveController(LiveDebugController):
-    """High-level controller specialized for the Neon Dominion RTS game."""
+    """High-level controller specialized for the Neon Dominion RTS game.
 
-    def __init__(self, cdp_url: str = "http://127.0.0.1:9222"):
-        super().__init__(cdp_url)
+    Inherits robust CDP discovery, tracing, and video recording from the base class.
+    """
+
+    def __init__(
+        self,
+        cdp_url: str = "http://127.0.0.1:9222",
+        fresh_context: bool = False,
+        record_video: bool = False,
+        video_dir: str = "recordings/rts",
+    ):
+        super().__init__(
+            cdp_url=cdp_url,
+            fresh_context=fresh_context,
+            record_video=record_video,
+            video_dir=video_dir,
+        )
         self.lobby_id: Optional[str] = None
 
     # ------------------------------------------------------------------
@@ -48,7 +63,6 @@ class RTSLiveController(LiveDebugController):
         self.wait_for_selector("#lobby-name", timeout=8000)
         self.fill("#lobby-name", name)
 
-        # Set max players if the UI supports it (adjust selector as needed)
         try:
             self.fill("#max-players", str(max_players))
         except Exception:
@@ -65,7 +79,6 @@ class RTSLiveController(LiveDebugController):
             try:
                 self.click("#add-ai-btn", timeout=5000)
                 time.sleep(0.4)
-                # If race selector appears
                 if self.is_visible("#ai-race-select"):
                     self.fill("#ai-race-select", race)
                     self.click("#confirm-add-ai")
@@ -80,7 +93,6 @@ class RTSLiveController(LiveDebugController):
             selector = f"[data-race='{race}']" if race else ".race-option"
             self.click(selector, timeout=6000)
         except Exception:
-            # Fallback: try common button text
             self.click(f"button:has-text('{race.capitalize()}')", timeout=4000)
         time.sleep(0.6)
 
@@ -101,7 +113,7 @@ class RTSLiveController(LiveDebugController):
         time.sleep(1.5)
 
     # ------------------------------------------------------------------
-    # Game State Inspection (very powerful for debugging)
+    # Game State Inspection
     # ------------------------------------------------------------------
 
     def get_game_state_summary(self) -> dict[str, Any]:
@@ -126,27 +138,66 @@ class RTSLiveController(LiveDebugController):
         except Exception as e:
             return {"error": str(e)}
 
-    def take_screenshot(self, name: str = "rts"):
+    def take_screenshot(self, name: str = "rts") -> str:
         """Take a timestamped screenshot of the current game view."""
         path = f"/tmp/rts-{name}-{int(time.time())}.png"
         return super().screenshot(path, full_page=False)
 
     # ------------------------------------------------------------------
-    # Convenience
+    # High-level debugging workflow helpers (new)
+    # ------------------------------------------------------------------
+
+    def record_full_game(
+        self,
+        name: str = "full-game",
+        duration_seconds: int = 60,
+    ) -> dict[str, Any]:
+        """Convenience method: start tracing + video, play for a while, then stop."""
+        trace_name = f"{name}-{int(time.time())}"
+
+        print(f"[RTS] Starting full game recording: {trace_name}")
+        self.start_tracing(trace_name, screenshots=True, snapshots=True, sources=True)
+
+        if self.record_video:
+            self.start_video_recording()
+
+        print(f"[RTS] Letting game run for {duration_seconds}s...")
+        time.sleep(duration_seconds)
+
+        trace_path = self.stop_tracing()
+        video_path = self.stop_video_recording()
+
+        return {
+            "trace": trace_path,
+            "video": video_path,
+            "duration": duration_seconds,
+        }
+
+    # ------------------------------------------------------------------
+    # Help
     # ------------------------------------------------------------------
 
     def help(self):
         print("""
-RTSLiveController commands (in addition to base LiveDebugController):
+RTSLiveController (extends LiveDebugController)
 
+Game Flow:
   ctrl.create_lobby(name, max_players=4)
   ctrl.add_ai_players(count, race="swarm")
   ctrl.select_race("tech")
   ctrl.start_match()
   ctrl.leave_match()
 
+State & Debugging:
   state = ctrl.get_game_state_summary()
   ctrl.take_screenshot("before-fog-fix")
+
+Powerful Recording (new):
+  ctrl.start_tracing("my-test")
+  ctrl.stop_tracing("trace.zip")
+  ctrl.start_video_recording()
+  ctrl.stop_video_recording()
+  result = ctrl.record_full_game("my-full-match", duration_seconds=90)
 
   ctrl.help()
         """)
