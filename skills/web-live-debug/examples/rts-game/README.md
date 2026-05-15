@@ -1,0 +1,1 @@
+This folder will contain the RTS-specific helpers extracted from the original Neon Dominion project as a reference implementation of extending the generic controller for a complex web game.
