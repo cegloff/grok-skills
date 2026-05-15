@@ -19,6 +19,21 @@ Traditional browser automation forces an unpleasant tradeoff:
 
 It has been battle-tested on a complex real-time strategy game and repeatedly found deep, subtle bugs (lobby state machines, fog-of-war, camera/HUD scaling, AI propagation, etc.) that would have been extremely difficult to catch otherwise.
 
+## Powerful Debugging Tools
+
+The controller includes two especially high-value features:
+
+- **Playwright Tracing** (`start_tracing` / `stop_tracing`)
+  - Records screenshots, DOM snapshots, and network activity
+  - Open traces later with `playwright show-trace trace.zip`
+  - Extremely effective for understanding exactly what happened during a failure
+
+- **Video Recording** (`start_video_recording` / `stop_video_recording`)
+  - Record the actual browser session as a video file
+  - Best results when using `LiveDebugController(fresh_context=True, record_video=True)`
+
+These tools turn every autonomous test run or interactive debugging session into a rich artifact you can review later.
+
 ## Quick Start
 
 ```bash
@@ -35,9 +50,17 @@ python -m testers.autonomous_web_tester --cycles 3
 ## Core Components
 
 ### Live Debug Controller (`controllers/`)
-An interactive `LiveDebugController` with high-level helpers (`goto`, `click`, `fill`, `evaluate`, `screenshot`, etc.). Run it as a module to get a powerful REPL connected to your browser.
+An interactive `LiveDebugController` with:
+- Robust CDP auto-discovery (probes `/json/version`, handles WSL, IPv6, host.docker.internal, etc.)
+- High-level actions (`goto`, `click`, `fill`, `evaluate`, `screenshot`)
+- **Tracing** and **Video recording** support
+- Easy to subclass
 
-Easily subclassed with application-specific methods.
+Run it as a module to get a powerful REPL:
+
+```bash
+python -m controllers.live_debug_controller
+```
 
 ### Autonomous Web Tester (`testers/`)
 `AutonomousWebTester` base class for repeatable test workflows. Handles looping, error reporting, and failure screenshots. Subclass it for your app.
@@ -59,7 +82,7 @@ See `docs/multi-subagent-pattern.md` for the full recommended workflow.
 ## Example Applications
 
 - `examples/simple-web-app/` — Tiny, clean FastAPI + HTMX demo perfect for learning the skill
-- `examples/rts-game/` — Full reference implementation for a complex Phaser 3 RTS game (the original use case). Includes `RTSLiveController` and `RTSAutonomousTester` that can play complete matches autonomously.
+- `examples/rts-game/` — Full reference implementation for a complex Phaser 3 RTS game (the original use case). Includes `RTSLiveController` and `RTSAutonomousTester` that can play complete matches autonomously, with `record_full_game()` helper.
 
 ## Documentation
 
