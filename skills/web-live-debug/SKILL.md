@@ -16,8 +16,10 @@ This skill solves a common pain point: traditional browser automation is either 
 
 ## Key Features
 
-- Connect to an existing Chrome instance via Chrome DevTools Protocol (CDP)
+- **Robust CDP discovery** — Automatically finds running Chrome instances (probes `/json/version`, WSL host IP, IPv6, `host.docker.internal`, etc.)
 - High-level Playwright controller with easy extension points
+- **Built-in Tracing** (`start_tracing` / `stop_tracing`) — Record full interaction traces with screenshots and DOM snapshots
+- **Video Recording** support (especially powerful with fresh context)
 - Base class for autonomous test workflows
 - Cross-platform Chrome launcher (Python primary + shell wrappers)
 - Strong Windows + WSL support (mirrored networking recommended)
@@ -57,7 +59,13 @@ python -m testers.autonomous_web_tester --cycles 3
 
 ### Live Debug Controller
 
-`controllers/live_debug_controller.py` — A reusable `LiveDebugController` class with common actions (`goto`, `click`, `fill`, `evaluate`, `screenshot`, etc.). Designed to be subclassed with application-specific helpers.
+`controllers/live_debug_controller.py` — A reusable `LiveDebugController` class with:
+- Robust auto-discovery of Chrome remote debugging endpoints
+- Common actions (`goto`, `click`, `fill`, `evaluate`, `screenshot`)
+- `start_tracing()` / `stop_tracing()`
+- Video recording helpers
+
+Designed to be subclassed with application-specific helpers.
 
 ### Autonomous Web Tester
 
@@ -86,7 +94,7 @@ See `docs/` for the recommended pattern.
 3. Create a tester subclass with your test scenarios
 4. Put the code in `examples/your-app/`
 
-See `examples/rts-game/` for a real-world reference implementation (complex Phaser RTS game).
+See `examples/rts-game/` for a real-world reference implementation (complex Phaser RTS game) that uses `record_full_game()`.
 
 ## Example Applications
 
@@ -96,7 +104,8 @@ See `examples/rts-game/` for a real-world reference implementation (complex Phas
 ## Documentation
 
 - `docs/remote-debugging.md` — Detailed cross-platform setup (especially Windows + WSL mirrored networking)
-- More guides coming (multi-subagent patterns, extending the controller, troubleshooting)
+- `docs/multi-subagent-pattern.md` — Recommended multi-subagent workflow
+- `docs/extending.md` — How to extend the controller for your own application
 
 ## Platform Support
 
